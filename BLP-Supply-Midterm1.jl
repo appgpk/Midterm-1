@@ -196,7 +196,7 @@ result = optimize(objective, P0, NelderMead())
 BaselineP = Optim.minimizer(result)
 BaselineShare = sharefunction(θ₁ ,θ₂, X, v_50, market_id,BaselineP)
 
-
+# Comparing Baseline price and baseline share to observed price and share
 blp_data[!, :P] = vec(BaselineP)
 blp_data[!, :s] = vec(BaselineShare)
 differences = vec(BaselineP - P)
@@ -220,14 +220,21 @@ BaselineData = df_filtered[!, ["firmid","P","s","marketid","id"]]
 
 
 # Merger Function Efficient  ------------------------------------------------------------------
+#filter the for id == 1 or 2
 df_filtered = filter(row -> row.firmid == 1 || row.firmid == 2, blp_data)
+# Grouping the filtered DataFrame by the column marketid
 df_grouped = groupby(df_filtered, :marketid)
+# Calculating the minimum value of ω within each group
 df_min_ω = combine(df_grouped, :ω => minimum => :ω_AM)
+# Add it to the original data
 blp_data = leftjoin(blp_data, df_min_ω, on = :marketid)
+# Modify it for firmid == 3
 transform!(blp_data, [:ω, :ω_AM, :firmid] => ByRow((ω, ω_AM, firmid) -> firmid == 3 ? ω : ω_AM) => :ω_AM)
+
 X = Matrix(blp_data[!, ["caffeine_scoreAM"]])
 ω = Matrix(blp_data[!, ["ω_AM"]])
 MC = X*θ₃+ω 
+# Create a single id for the new firm
 transform!(blp_data, :firmid => ByRow(firmid -> firmid == 2 ? 1 : firmid) => :firmid)
 
 firm_id = Vector(blp_data[!,"firmid"])
